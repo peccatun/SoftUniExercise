@@ -1,14 +1,15 @@
 ﻿using ProductShop.Data;
+using ProductShop.Models;
 using ProductShop.Dtos.Export;
 using ProductShop.Dtos.Import;
-using ProductShop.Models;
+
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 using System.Xml.Serialization;
+using System.Collections.Generic;
 
 namespace ProductShop
 {
@@ -19,7 +20,7 @@ namespace ProductShop
             using (var db = new ProductShopContext())
             {
                 //var document = File.ReadAllText("./../../../Datasets/categories-products.xml");
-                Console.WriteLine(GetSoldProducts(db));
+                Console.WriteLine(GetUsersWithProducts(db));
             }
         }
 
@@ -258,6 +259,92 @@ namespace ProductShop
             {
                 serializer.Serialize(writer, products,namespaces);
             }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        //problem 07
+        public static string GetCategoriesByProductsCount(ProductShopContext context)
+        {
+            var categories = context
+                .Categories
+                .Select(c => new CategoriesDto
+                {
+                    Name = c.Name,
+                    Count = c.CategoryProducts.Count,
+                    AveragePrice = c.CategoryProducts.Average(cp => cp.Product.Price),
+                    TotalPrice = c.CategoryProducts.Sum(cp => cp.Product.Price),
+                })
+                .OrderByDescending(c => c.Count)
+                .ThenBy(c => c.TotalPrice)
+                .ToArray();
+
+            XmlSerializer serializer = new XmlSerializer(
+                typeof(CategoriesDto[]),
+                new XmlRootAttribute("Categories"));
+
+            var namespaces = new XmlSerializerNamespaces();
+            namespaces.Add("", "");
+
+            StringBuilder sb = new StringBuilder();
+
+
+            using (var writer = new StringWriter(sb))
+            {
+                serializer.Serialize(writer, categories, namespaces);
+            }
+
+            return sb.ToString().TrimEnd();
+        }
+
+        //problem 08
+        public static string GetUsersWithProducts(ProductShopContext context)
+        {
+            var users = context
+                .Users
+                .Where(u => u.ProductsSold.Count > 0)
+                .OrderByDescending(u => u.ProductsSold.Count)
+                .Select(u => new UserDto
+                {
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Age = u.Age,
+                    SoldProducts = new CountAndProductsDto
+                    {
+                        Count = u.ProductsSold.Count,
+                        Products = u.ProductsSold.Select(ps => new SoldProductDto
+                        {
+                            Name = ps.Name,
+                            Price = ps.Price,
+                        })
+                        .OrderByDescending(p => p.Price)
+                        .ToArray()
+                    }
+
+                })
+                .Take(10)
+                .ToArray();
+
+            UserResultDto result = new UserResultDto()
+            {
+                Count = context.Users.Count(u => u.ProductsSold.Any()),
+                ResultUserDto = users,
+            };
+
+            XmlSerializer serializer = new XmlSerializer(typeof(UserResultDto),
+                new XmlRootAttribute("Users"));
+
+            var namespaces = new XmlSerializerNamespaces();
+            namespaces.Add("", "");
+
+            var sb = new StringBuilder();
+
+            using (var writer = new StringWriter(sb))
+            {
+                serializer.Serialize(writer, result, namespaces);
+            }
+
+
 
             return sb.ToString().TrimEnd();
         }
