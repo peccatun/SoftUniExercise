@@ -13,27 +13,27 @@
     {
         public static void Main(string[] args)
         {
-            //var context = new MusicHubDbContext();
+            var context = new MusicHubDbContext();
 
-            //Mapper.Initialize(config => config.AddProfile<MusicHubProfile>());
+            Mapper.Initialize(config => config.AddProfile<MusicHubProfile>());
 
-            //ResetDatabase(context, shouldDropDatabase: true);
+            ResetDatabase(context, shouldDropDatabase: true);
 
-            //var projectDir = GetProjectDirectory();
+            var projectDir = GetProjectDirectory();
 
-            //ImportEntities(context, projectDir + @"Datasets/", projectDir + @"ImportResults/");
-            //ExportEntities(context, projectDir + @"ExportResults/");
+            ImportEntities(context, projectDir + @"Datasets/", projectDir + @"ImportResults/");
+            ExportEntities(context, projectDir + @"ExportResults/");
 
-            //using (var transaction = context.Database.BeginTransaction())
-            //{
-            //    transaction.Rollback();
-            //}
-
-            using (var context = new MusicHubDbContext())
+            using (var transaction = context.Database.BeginTransaction())
             {
-                var doc = File.ReadAllText("./../../../Datasets/ImportSongs.xml");
-                Console.WriteLine(Deserializer.ImportSongs(context, doc));
+                transaction.Rollback();
             }
+
+            //using (var context = new MusicHubDbContext())
+            //{
+            //    var doc = File.ReadAllText("./../../../Datasets/ImportSongPerformers.xml");
+            //    Console.WriteLine(Serializer.ExportAlbumsInfo(context,7));
+            //}
         }
 
         private static void ImportEntities(MusicHubDbContext context, string baseDir, string exportDir)

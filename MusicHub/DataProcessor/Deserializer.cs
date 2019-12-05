@@ -239,7 +239,92 @@
 
         public static string ImportSongPerformers(MusicHubDbContext context, string xmlString)
         {
-            throw new NotImplementedException();
+            XmlSerializer serializer = new XmlSerializer(
+                typeof(ImportPerformerDto[]),
+                new XmlRootAttribute("Performers"));
+
+            var performersDto = (ImportPerformerDto[])serializer.Deserialize(new StringReader(xmlString));
+
+
+            var songsIds = context
+                .Songs
+                .Select(s => s.Id)
+                .ToList();
+
+            List<Performer> performers = new List<Performer>();
+            var sb = new StringBuilder();
+            List<SongPerformer> songPerformers = new List<SongPerformer>();
+            foreach (var dto in performersDto)
+            {
+                if (!IsValid(dto))
+                {
+                    sb.AppendLine(ErrorMessage);
+                    continue;
+                }
+
+                var performer = new Performer()
+                {
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Age = dto.Age,
+                    NetWorth = dto.NetWorth,
+                };
+
+                List<Song> validSongs = new List<Song>();
+                int validSongsCount = dto.Songs.Length;
+
+                foreach (var song in dto.Songs)
+                {
+                    if (!songsIds.Contains(song.Id))
+                    {
+                        continue;
+                    }
+
+                    var currentSong = context
+                        .Songs
+                        .Where(s => s.Id == song.Id)
+                        .First();
+
+                    validSongs.Add(currentSong);
+                }
+
+                if (validSongs.Count == validSongsCount)
+                {
+                    performers.Add(performer);
+
+                    foreach (var song in validSongs)
+                    {
+                        var songPerformer = new SongPerformer()
+                        {
+                            Performer = performer,
+                            SongId = song.Id,
+                        };
+
+                        songPerformers.Add(songPerformer);
+                    }
+
+                    sb.AppendLine($"Imported {performer.FirstName} ({validSongs.Count} songs)");
+                }
+                else
+                {
+                    sb.AppendLine(ErrorMessage);
+                }
+
+            }
+
+            context
+                .Performers
+                .AddRange(performers);
+
+            context
+                .SongsPerformers
+                .AddRange(songPerformers);
+
+            context
+                .SaveChanges();
+
+
+            return sb.ToString().Trim();
         }
 
         private static bool IsValid(object obj)
